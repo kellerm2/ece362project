@@ -17,6 +17,7 @@ const char* username = "chen4186";
 /******************************************************************************
 */ 
 
+#define _USE_MATH_DEFINES
 #include "stm32f0xx.h"
 #include <math.h>   // for M_PI
 #include <stdint.h>
