@@ -60,7 +60,7 @@ void spi_send_data_block(uint8_t* data, uint16_t length);
 // Function Implementations
 // ----------------------------------------------------------------------------
 
-// Initialize SPI1 peripheral for TFT communication
+// Initializes the SPI interface for communication with the TFT LCD
 void spi_tft_init(void) {
     // Enable clocks for GPIOA and SPI1
     RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
@@ -105,7 +105,8 @@ void spi_tft_init(void) {
     TFT_SPI->CR1 |= SPI_CR1_SPE;              // Enable SPI
 }
 
-// Send a single byte via SPI
+// Sends a single byte of data over the SPI interface to the TFT
+// SPI1: Transmits a single byte to the TFT LCD and waits for the transmission to complete
 void spi_send_byte(uint8_t data) {
     // Wait until TX buffer is empty
     while (!(TFT_SPI->SR & SPI_SR_TXE));
@@ -116,7 +117,7 @@ void spi_send_byte(uint8_t data) {
     (void)TFT_SPI->DR;
 }
 
-// Reset the TFT LCD
+// Reset the TFT LCD by toggling the reset pin
 void tft_reset(void) {
     // Configure RST pin as output (already done in spi_tft_init)
     // Reset sequence
@@ -126,7 +127,11 @@ void tft_reset(void) {
     for (volatile int i = 0; i < 100000; i++);
 }
 
-// Send a command to the TFT
+// Sends a command byte to the TFT LCD to configure settings or execute a specific action
+// GPIOA: Uses PA3 as the data/command (DC) pin and PA4 as the chip select (CS) pin to signal a command.
+// SPI1: Sends the command byte to the TFT.
+// Sets DC low to indicate a command.
+// Lowers CS to start transmission, sends the command via SPI, then raises CS to complete the transaction.
 void tft_command(uint8_t cmd) {
     // Set DC low for command
     GPIOA->BSRR = GPIO_BSRR_BR_3; // DC low
@@ -138,7 +143,11 @@ void tft_command(uint8_t cmd) {
     GPIOA->BSRR = GPIO_BSRR_BS_4; // CS high
 }
 
-// Send data to the TFT
+// Sends data (as opposed to a command) to the TFT LCD
+// GPIOA: Uses PA3 (DC) for setting data mode and PA4 (CS) for enabling/disabling SPI transmission.
+// SPI1: Transmits the data byte to the TFT
+// Sets DC high to indicate data mode.
+// Lowers CS, sends the data via SPI, then raises CS.
 void tft_data(uint8_t data) {
     // Set DC high for data
     GPIOA->BSRR = GPIO_BSRR_BS_3; // DC high
@@ -151,6 +160,7 @@ void tft_data(uint8_t data) {
 }
 
 // Initialize the TFT LCD
+// PI1 and GPIOA: Sends initialization commands and data to set up the display’s properties
 void tft_init(void) {
     tft_reset();
 
@@ -233,6 +243,9 @@ void tft_init(void) {
 }
 
 // Set the address window for pixel operations
+// Sends commands to set the column (0x2A) and row (0x2B) addresses.
+// Defines the upper left (x0, y0) and lower right (x1, y1) corners of the area to be modified.
+// Prepares the TFT to receive pixel data within this window
 void tft_set_address_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
     tft_command(0x2A); // Column Address Set
     tft_data(x0 >> 8);
@@ -250,6 +263,8 @@ void tft_set_address_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) 
 }
 
 // Draw a single pixel at (x, y) with the specified color
+// Calls tft_set_address_window() to set the pixel location.
+// Sends the color data (in RGB565 format) to draw the pixel
 void tft_draw_pixel(uint16_t x, uint16_t y, uint16_t color) {
     if (x >= TFT_WIDTH || y >= TFT_HEIGHT)
         return;
@@ -282,6 +297,7 @@ void tft_clear_screen(uint16_t color) {
 }
 
 // Send a block of data via SPI (useful for fast pixel streaming)
+// (e.g., drawing lines or large filled areas)
 void spi_send_data_block(uint8_t* data, uint16_t length) {
     // Set DC high for data
     GPIOA->BSRR = GPIO_BSRR_BS_3; // DC high
