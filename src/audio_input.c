@@ -137,7 +137,7 @@ void process_audio_data(void) {
     // TODO: Map amplitude to visualization parameters or trigger events
     
     // Example: Perform FFT (requires additional implementation)
-    /*
+    
     float fft_input[AUDIO_BUFFER_SIZE];
     float fft_output[AUDIO_BUFFER_SIZE / 2];
     for(uint16_t i = 0; i < AUDIO_BUFFER_SIZE; i++) {
@@ -146,7 +146,7 @@ void process_audio_data(void) {
     compute_fft(fft_input, fft_output, AUDIO_BUFFER_SIZE);
     
     // TODO: Use fft_output for frequency spectrum visualization
-    */
+    
 }
 
 // Calculate the amplitude of the audio signal

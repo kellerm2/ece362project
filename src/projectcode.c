@@ -3,49 +3,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
-// #include "spi_tft.h"
-// #include "audio_input.h"
-// #include "dma_handler.h"
-// #include "support.h"
-// #include "syscalls.h"
-// #include "display_control.h"
-// #include "graphics.h"
-
-// SETUP HERE - ENABLING STUFF
-
-// AUDIO INPUT HERE
-
-// DMA HANDLER HERE
-
-// SPI TFT HERE
-
-// GRAPHICS HERE
-
-// DISPLAY CTRL HERE
-// SETUP HERE - ENABLING STUFF
 #include "spi_tft.h"
 #include "audio_input.h"
-#include "dma_handler.h"
-#include "support.h"
-#include "syscalls.h"
 #include "display_control.h"
 #include "graphics.h"
-
-// ENABLE GPIO AND STUFF
-
-// AUDIO INPUT HERE
-
-
-// DMA HANDLER HERE
-
-
-// SPI TFT HERE
-
-
-// GRAPHICS HERE
-
-
-// DISPLAY CTRL HERE
 
 
 // MAIN
@@ -74,6 +35,8 @@ int main() {
     // Example audio buffer and frequency bins
     uint16_t audio_buffer[256];
     float frequency_bins[128];
+    uint16_t FFT_BIN_COUNT = 128; // need for refresh in display_ctrl.c
+    // AUDIO_BUFFER_SIZE defined in audio_input.h
 
     // SPI TFT
     spi_tft_init();
@@ -89,19 +52,11 @@ int main() {
         }
     }
 
-    // Fill the screen with blue
-    tft_clear_screen(COLOR_BLUE);
-
     while(1) {
-        // if (display_update_flag) {
-        //     refresh_display();
-        //     display_update_flag = 0;
-        // }
-        // Assume audio_buffer is filled via DMA
-        render_waveform(audio_buffer, 256);
-
-        // Assume frequency_bins is filled via FFT
-        render_spectrum(frequency_bins, 128);
+        if (display_update_flag) {
+            refresh_display();
+            display_update_flag = 0;
+        }
 
         nano_wait(100000); // Small delay to control update rate
         // Rendering and visualization handled in graphics.c via DMA data

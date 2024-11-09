@@ -1,4 +1,6 @@
-
+#include "stm32f0xx.h"
+#include <stdint.h>
+#include <math.h>
 
 // ----------------------------------------------------------------------------
 // Definitions and Macros
