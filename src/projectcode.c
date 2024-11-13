@@ -22,23 +22,138 @@ void enable_ports(void) {
     GPIOC->PUPDR |= 0x00000055;
 }
 
+//============================================================================
+// setup_dma() + enable_dma()
+//============================================================================
 void setup_dma(void) {
-    RCC->AHBENR |= DMA_CCR_EN;
-    DMA1_Channel5->CCR &= ~DMA_CCR_EN;
-    DMA1_Channel5->CMAR = (uint32_t) send_to_dma;
-    DMA1_Channel5->CPAR = (uint32_t) &(GPIOA->ODR);
-    DMA1_Channel5->CNDTR = 8;
-    DMA1_Channel5->CCR |= DMA_CCR_DIR;
-    DMA1_Channel5->CCR |= DMA_CCR_MINC;
-    DMA1_Channel5->CCR &= ~DMA_CCR_MSIZE;
-    DMA1_Channel5->CCR &= ~DMA_CCR_PSIZE;
-    DMA1_Channel5->CCR |= DMA_CCR_MSIZE_0;
-    DMA1_Channel5->CCR |= DMA_CCR_PSIZE_0;
-    DMA1_Channel5->CCR |= DMA_CCR_CIRC;
+    RCC->AHBENR |= RCC_AHBENR_DMA1EN;
+    DMA1_Channel1->CCR &= ~DMA_CCR_EN;
+    DMA1_Channel1->CMAR = (uint32_t)(&(ADC1->DR));
+    DMA1_Channel1->CPAR = (uint32_t)(audio_buffer); // & is address of
+    DMA1_Channel1->CNDTR = (uint32_t) AUDIO_BUFFER_SIZE;
+    DMA1_Channel1->CCR |= DMA_CCR_DIR | DMA_CCR_MINC | DMA_CCR_MSIZE_0 | DMA_CCR_PSIZE_0 | DMA_CCR_CIRC;
+
+    // Clear any pending flags
+    DMA1->IFCR = DMA_IFCR_CTCIF1; // needed to call process_audio
+
+    DMA1_Channel5->CCR |= DMA_CCR_EN;
+    // Enable DMA1 Channel1 interrupt in NVIC
+    NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+    NVIC_SetPriority(DMA1_Channel1_IRQn, 1);
 }
 
-void enable_dma(void) {
-   DMA1_Channel5->CCR |= DMA_CCR_EN;
+
+//============================================================================
+// init_tim15()
+//============================================================================
+void init_tim15(void) {
+    RCC->APB2ENR |= RCC_APB2ENR_TIM15EN;
+    // 48M / 1k = 48k = PSC * ARR
+    TIM15->PSC = 999; // (999 + 1) = 1k
+    TIM15->ARR = 47; // (47 + 1) = 48
+
+    TIM15->DIER |= TIM_DIER_UDE;
+    TIM15->CR1 |= TIM_CR1_CEN;
+}
+
+//============================================================================
+// setup_adc()
+//============================================================================
+void setup_adc(void) {
+    RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+    GPIOA->MODER |= 0x0000000C; // set PA1 to 11 for analog mode
+
+    RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
+    RCC->CR2 |= RCC_CR2_HSI14ON;
+
+    while ((RCC->CR2 & RCC_CR2_HSI14RDY) == 0) {
+        // Wait for the 14 MHz clock to be ready.
+    } 
+
+    ADC1->CR |= ADC_CR_ADEN;
+    while ((ADC1->ISR & ADC_ISR_ADRDY) == 0) {
+        // Wait for the ADC to be ready
+    } 
+
+    ADC1->CHSELR |= ADC_CHSELR_CHSEL1;
+    while ((ADC1->ISR & ADC_ISR_ADRDY) == 0) {
+        // Wait for the ADC to be ready
+    }
+}
+//============================================================================
+// Varables for boxcar averaging.
+//============================================================================
+#define BCSIZE 32
+int bcsum = 0;
+int boxcar[BCSIZE];
+int bcn = 0;
+//============================================================================
+// Timer 2 ISR
+//============================================================================
+// Write the Timer 2 ISR here.  Be sure to give it the right name.
+void TIM2_IRQHandler();
+
+void TIM2_IRQHandler() {
+    TIM2->SR &= ~TIM_SR_UIF; //acknowledge the interrupt first
+
+    ADC1->CR |= ADC_CR_ADSTART;
+    while ((ADC1->ISR & ADC_ISR_EOC) == 0) {
+        // Wait until the EOC bit is set in the ISR
+    }
+
+    bcsum -= boxcar[bcn];
+    bcsum += boxcar[bcn] = ADC1->DR;
+    bcn += 1;
+    if (bcn >= BCSIZE)
+        bcn = 0;
+    volume = bcsum / BCSIZE; // !!!! what is volume here, do we need this
+}
+
+
+//============================================================================
+// init_tim2()
+//============================================================================
+void init_tim2(void) {
+    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+    // 48M / 10 = 4.8M = PSC * ARR
+    TIM2->PSC = 9999; // (9999 + 1) = 10k
+    TIM2->ARR = 479; // (479 + 1) = 480
+
+    TIM2->DIER |= TIM_DIER_UIE;
+    NVIC_EnableIRQ(TIM2_IRQn);
+    TIM2->CR1 |= TIM_CR1_CEN;
+
+    NVIC_SetPriority(TIM2_IRQn, 3); // sets lower priority for running againt ISR TIM6
+}
+
+// Process Audio Data (e.g., Calculate Amplitude, Perform FFT)
+void process_audio_data(void) {
+    // Example: Calculate amplitude
+    float amplitude = calculate_amplitude((uint16_t*)audio_buffer, AUDIO_BUFFER_SIZE);
+    
+    // TODO: Map amplitude to visualization parameters or trigger events
+    
+    // Example: Perform FFT (requires additional implementation)
+    
+    float fft_input[AUDIO_BUFFER_SIZE];
+    float fft_output[AUDIO_BUFFER_SIZE / 2];
+    for(uint16_t i = 0; i < AUDIO_BUFFER_SIZE; i++) {
+        fft_input[i] = (audio_buffer[i] - 2048) / 2048.0f; // Normalize ADC data (assuming 12-bit ADC)
+    }
+    compute_fft(fft_input, fft_output, AUDIO_BUFFER_SIZE);
+    
+    // TODO: Use fft_output for frequency spectrum visualization
+    
+}
+
+void DMA1_Channel1_IRQHandler(void) {
+    if (DMA1->ISR & DMA_ISR_TCIF1) {
+        // Clear the DMA transfer complete flag
+        DMA1->IFCR |= DMA_IFCR_CTCIF1;
+        
+        // Process the audio data
+        process_audio_data();
+    }
 }
 
 // MAIN
@@ -46,11 +161,11 @@ int main() {
     // enable
     internal_clock();
     enable_ports(); // not set up
-    //setup_dma();
-    //enable_dma();
-    //init_tim15(); // used for DMA
-    // setup_adc();
-    //init_tim2(); // used for ADC
+    setup_dma();
+    // enable_dma();
+    init_tim15(); // used for DMA
+    setup_adc();
+    init_tim2(); // used for ADC
 
     // Initialize Audio Input
     audio_setup();
