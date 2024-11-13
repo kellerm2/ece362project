@@ -9,20 +9,48 @@
 #include "graphics.h"
 
 
+void enable_ports(void) {
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+    RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+    GPIOB->MODER &= 0xFFEAAAAA;
+    GPIOB->MODER |= 0x00155555;
+    GPIOC->MODER &= ~0xFF00;
+    GPIOC->MODER |= 0x5500;
+    GPIOC->OTYPER &= 0xFF0F;
+    GPIOC->OTYPER |= 0x00F0;
+    GPIOC->PUPDR &= 0xFFFFFFAA;
+    GPIOC->PUPDR |= 0x00000055;
+}
+
+void setup_dma(void) {
+    RCC->AHBENR |= DMA_CCR_EN;
+    DMA1_Channel5->CCR &= ~DMA_CCR_EN;
+    DMA1_Channel5->CMAR = (uint32_t) send_to_dma;
+    DMA1_Channel5->CPAR = (uint32_t) &(GPIOA->ODR);
+    DMA1_Channel5->CNDTR = 8;
+    DMA1_Channel5->CCR |= DMA_CCR_DIR;
+    DMA1_Channel5->CCR |= DMA_CCR_MINC;
+    DMA1_Channel5->CCR &= ~DMA_CCR_MSIZE;
+    DMA1_Channel5->CCR &= ~DMA_CCR_PSIZE;
+    DMA1_Channel5->CCR |= DMA_CCR_MSIZE_0;
+    DMA1_Channel5->CCR |= DMA_CCR_PSIZE_0;
+    DMA1_Channel5->CCR |= DMA_CCR_CIRC;
+}
+
+void enable_dma(void) {
+   DMA1_Channel5->CCR |= DMA_CCR_EN;
+}
+
 // MAIN
 int main() {
     // enable
     internal_clock();
-    enable_ports();
-    setup_dma();
-    enable_dma();
-    init_tim15();
-    init_tim7();
-    setup_adc();
-    init_tim2();
-    init_wavetable();
-    setup_dac();
-    init_tim6();
+    enable_ports(); // not set up
+    //setup_dma();
+    //enable_dma();
+    //init_tim15(); // used for DMA
+    // setup_adc();
+    //init_tim2(); // used for ADC
 
     // Initialize Audio Input
     audio_setup();

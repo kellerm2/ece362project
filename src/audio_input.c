@@ -117,17 +117,43 @@ void adc_dma_init(void) {
     NVIC_SetPriority(DMA1_Channel1_IRQn, 1);
 }
 
+//////////
+#define BCSIZE 32
+int bcsum = 0;
+int boxcar[BCSIZE];
+int bcn = 0;
 
-// DMA1 Channel1 Interrupt Handler
-void DMA1_Channel1_IRQHandler(void) {
-    if (DMA1->ISR & DMA_ISR_TCIF1) {
-        // Clear the DMA transfer complete flag
-        DMA1->IFCR |= DMA_IFCR_CTCIF1;
-        
-        // Process the audio data
-        process_audio_data();
+//============================================================================
+// Timer 2 ISR
+//============================================================================
+// Write the Timer 2 ISR here.  Be sure to give it the right name.
+void TIM2_IRQHandler() {
+    TIM2->SR &= ~TIM_SR_UIF;
+    ADC1->CR |= ADC_CR_ADSTART;
+    ADC1->ISR |= ADC_ISR_EOC;
+
+    bcsum -= boxcar[bcn];
+    bcsum += boxcar[bcn] = ADC1->DR;
+    bcn += 1;
+    if (bcn >= BCSIZE) {
+        bcn = 0;
     }
+    uint32_t send_to_dma = bcsum / BCSIZE;
 }
+//============================================================================
+// init_tim2()
+//============================================================================
+void init_tim2(void) {
+    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+    TIM2->PSC = 16000 - 1;
+    TIM2->ARR = 300 - 1;
+    TIM2->DIER |= TIM_DIER_UIE;
+    NVIC->ISER[0] |= 1 << TIM2_IRQn;
+    TIM2->CR1 |= TIM_CR1_CEN;
+}
+
+
+/////////
 
 // Process Audio Data (e.g., Calculate Amplitude, Perform FFT)
 void process_audio_data(void) {

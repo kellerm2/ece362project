@@ -15,8 +15,8 @@
 #define DISPLAY_ARR 300             // Auto-reload value
 
 // PWM Configuration for Brightness Control (Optional)
-#define PWM_TIMER TIM3
-#define PWM_CHANNEL TIM3->CCER |= TIM_CCER_CC1E; // Enable Channel 1
+//#define PWM_TIMER TIM3
+//#define PWM_CHANNEL TIM3->CCER |= TIM_CCER_CC1E; // Enable Channel 1
 #define PWM_PIN GPIO_PIN_6        // PA6 for TIM3_CH1
 #define PWM_GPIO GPIOA
 #define PWM_PRESCALER 1
@@ -68,28 +68,6 @@ void init_display_timer(void) {
     // Enable TIM15 interrupt in NVIC
     NVIC_EnableIRQ(DISPLAY_TIMER_IRQ);
     NVIC_SetPriority(DISPLAY_TIMER_IRQ, 2);      // Set priority (adjust as needed)
-}
-
-// Initialize TIM3 for PWM-based brightness control (Optional)
-void init_pwm_brightness(void) {
-    // Enable clock for TIM3 and GPIOA
-    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
-    RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
-    
-    // Configure PA6 as Alternate Function (TIM3_CH1)
-    PWM_GPIO->MODER &= ~(GPIO_MODER_MODER6_Msk);
-    PWM_GPIO->MODER |= (2 << GPIO_MODER_MODER6_Pos); // Alternate Function
-    PWM_GPIO->AFR[0] &= ~(GPIO_AFRL_AFRL6_Msk);
-    PWM_GPIO->AFR[0] |= (1 << GPIO_AFRL_AFRL6_Pos);   // AF1 for TIM3_CH1
-    
-    // Configure TIM3 for PWM mode
-    PWM_TIMER->CR1 = 0;
-    PWM_TIMER->CR1 |= TIM_CR1_CEN;                     // Enable TIM3
-    PWM_TIMER->PSC = PWM_PRESCALER - 1;                // Prescaler
-    PWM_TIMER->ARR = PWM_ARR;                          // Auto-reload for PWM resolution
-    PWM_TIMER->CCMR1 |= TIM_CCMR1_OC1M_1 | TIM_CCMR1_OC1M_2; // PWM Mode 1
-    PWM_TIMER->CCER |= TIM_CCER_CC1E;                  // Enable output on channel 1
-    PWM_TIMER->CCR1 = brightness_level;                // Set initial brightness level
 }
 
 // TIM15 Interrupt Handler for Display Refresh
