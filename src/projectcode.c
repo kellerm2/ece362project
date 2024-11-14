@@ -157,10 +157,10 @@ void process_audio_data(void) {
     kiss_fft(cfg, input, output);
 
     // Calculate magnitudes and map to display
-    for (int i = 0; i < FFT_SIZE / 2; i++) {  // Only half of spectrum for real input
-        float magnitude = sqrtf(output[i].r * output[i].r + output[i].i * output[i].i);
-        refresh_display(i, magnitude);  // Map each bin to a TFT bar
-    }
+    // for (int i = 0; i < FFT_SIZE / 2; i++) {  // Only half of spectrum for real input
+    //     float magnitude = sqrtf(output[i].r * output[i].r + output[i].i * output[i].i);
+    //     refresh_display(i, magnitude);  // Map each bin to a TFT bar
+    // }
 
 }
 
@@ -195,9 +195,9 @@ void tft_draw_bar(uint16_t x, uint16_t height) {
 
 void refresh_display() {
     tft_clear_screen(COLOR_BLACK);
-    for (uint16_t i = 0; i < FFT_BIN_COUNT; i++) {
-        uint16_t bar_height = (uint16_t)(frequency_bins[i] * MAX_BAR_HEIGHT);
-        tft_draw_bar(i * 2, bar_height, COLOR_BLUE); // Each bin spaced by 2 pixels
+    for (uint16_t i = 0; i < FFT_SIZE/2; i++) {
+        uint16_t bar_height = (uint16_t)(output[i] * MAX_BAR_HEIGHT);
+        tft_draw_bar(i * 2, bar_height); // Each bin spaced by 2 pixels
     }
 }
 
