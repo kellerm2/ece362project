@@ -129,21 +129,6 @@ void init_tim2(void) {
 
 // Process Audio Data (e.g., Calculate Amplitude, Perform FFT)
 void process_audio_data(void) {
-    // Example: Calculate amplitude
-    float amplitude = calculate_amplitude((uint16_t*)audio_buffer, AUDIO_BUFFER_SIZE);
-    
-    // TODO: Map amplitude to visualization parameters or trigger events
-    
-    // Example: Perform FFT (requires additional implementation)
-    
-    float fft_input[AUDIO_BUFFER_SIZE];
-    float fft_output[AUDIO_BUFFER_SIZE / 2];
-    for(uint16_t i = 0; i < AUDIO_BUFFER_SIZE; i++) {
-        fft_input[i] = (audio_buffer[i] - 2048) / 2048.0f; // Normalize ADC data (assuming 12-bit ADC)
-    }
-    compute_fft(fft_input, fft_output, AUDIO_BUFFER_SIZE);
-    
-    // TODO: Use fft_output for frequency spectrum visualization
     
 }
 
