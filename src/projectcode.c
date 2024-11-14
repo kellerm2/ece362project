@@ -7,6 +7,10 @@
 #include "audio_input.h"
 #include "display_control.h"
 
+uint16_t audio_buffer[256];
+float frequency_bins[128];
+uint16_t FFT_BIN_COUNT = 128; // need for refresh in display_ctrl.c
+uint16_t AUDIO_BUFFER_SIZE = 256; // need for refresh in display_ctrl.c
 
 void enable_ports(void) {
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
@@ -195,17 +199,9 @@ int main() {
     tft_init();
     display_init();
     tft_clear_screen(COLOR_BLACK);
-    
-    // Example audio buffer and frequency bins
-    uint16_t audio_buffer[256];
-    float frequency_bins[128];
-    uint16_t FFT_BIN_COUNT = 128; // need for refresh in display_ctrl.c
-    // AUDIO_BUFFER_SIZE defined in audio_input.h
 
     // SPI TFT
     spi_tft_init();
-    tft_init();
-    tft_clear_screen(COLOR_BLACK);
     // Draw a red pixel at (10, 10)
     tft_draw_pixel(10, 10, COLOR_RED);
 
