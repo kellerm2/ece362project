@@ -6,10 +6,19 @@
 #include "spi_tft.h"
 #include "display_control.h"
 
-uint16_t audio_buffer[256];
-float frequency_bins[128];
-uint16_t FFT_BIN_COUNT = 128; // need for refresh in display_ctrl.c
+#include "kiss_fft.h"       // Include KISS FFT library
+#include "tft_display.h"    // Include your TFT display library
+
+
+volatile uint16_t audio_buffer[256];
+float frequency_bins[8];
+uint16_t FFT_BIN_COUNT = 8; // need for refresh in display_ctrl.c
 uint16_t AUDIO_BUFFER_SIZE = 256; // need for refresh in display_ctrl.c
+
+kiss_fft_cpx input[FFT_SIZE];
+kiss_fft_cpx output[FFT_SIZE];
+kiss_fft_cfg cfg;
+
 
 void enable_ports(void) {
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
@@ -131,8 +140,26 @@ void init_tim2(void) {
 }
 
 // Process Audio Data (e.g., Calculate Amplitude, Perform FFT)
+void fft_init() {
+    cfg = kiss_fft_alloc(FFT_SIZE, 0, NULL, NULL);
+}
+
+
 void process_audio_data(void) {
-    
+    for (int i = 0; i < FFT_SIZE; i++) {
+        input[i].r = (float)(adc_samples[i] - 2048);  // Adjust if using a 12-bit ADC
+        input[i].i = 0;  // Real input, imaginary part is 0
+    }
+
+    // Perform FFT
+    kiss_fft(cfg, input, output);
+
+    // Calculate magnitudes and map to display
+    for (int i = 0; i < FFT_SIZE / 2; i++) {  // Only half of spectrum for real input
+        float magnitude = sqrtf(output[i].r * output[i].r + output[i].i * output[i].i);
+        display_on_tft(i, magnitude);  // Map each bin to a TFT bar
+    }
+
 }
 
 void DMA1_Channel1_IRQHandler(void) {
@@ -145,12 +172,12 @@ void DMA1_Channel1_IRQHandler(void) {
     }
 }
 
-void spi_tft_send(uint16_t x, uint16_t y, uint16_t color) {
+void spi_tft_send(uint16_t x, uint16_t y) {
     // Move to specified position on TFT
     tft_set_position(x, y);
 
     // Send color data for the pixel
-    SPI1->DR = color;
+    SPI1->DR = COLOR_BLUE;
     while (!(SPI1->SR & SPI_SR_TXE)); // Wait for transmission
 }
 
@@ -164,14 +191,14 @@ void update_visualizer(int volume) {
 
     // Update the visualizer (e.g., set the height of bars based on volume)
     for (int i = 0; i < 10; i++) {
-        tft_draw_bar(i * 25, bar_height, COLOR_BLUE); // Draw each bar based on the volume
+        tft_draw_bar(i * 25, bar_height); // Draw each bar based on the volume
     }
 }
 
-void tft_draw_bar(uint16_t x, uint16_t height, uint16_t color) {
+void tft_draw_bar(uint16_t x, uint16_t height) {
     // Draws a vertical bar representing an amplitude/frequency bin
     for (uint16_t y = 0; y < height; y++) {
-        spi_tft_send(x, y, color);
+        spi_tft_send(x, y);
     }
 }
 
@@ -214,6 +241,8 @@ int main() {
         }
     }
 
+    fft_init();
+
     while(1) {
         if (display_update_flag) {
             refresh_display();
@@ -225,6 +254,7 @@ int main() {
         // The process_audio_data() function can trigger updates or set parameters for graphics
     }
 
+    free(cfg);
     return 0;
 }
 
