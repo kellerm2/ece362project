@@ -4,7 +4,6 @@
 #include <stdio.h>
 
 #include "spi_tft.h"
-#include "audio_input.h"
 #include "display_control.h"
 
 uint16_t audio_buffer[256];
@@ -176,7 +175,6 @@ void tft_draw_bar(uint16_t x, uint16_t height, uint16_t color) {
     }
 }
 
-#define DISPLAY_WIDTH 128
 #define MAX_BAR_HEIGHT 100
 #define COLOR_BLUE 0x001F
 
