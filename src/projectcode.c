@@ -155,6 +155,10 @@ void spi_tft_send(uint16_t x, uint16_t y, uint16_t color) {
     while (!(SPI1->SR & SPI_SR_TXE)); // Wait for transmission
 }
 
+int map(int value, int in_min, int in_max, int out_min, int out_max) {
+    return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 void update_visualizer(int volume) {
     // Map volume to a range suitable for your visualizer
     int bar_height = map(volume, MIN_VOLUME, MAX_VOLUME, 0, MAX_BAR_HEIGHT);
