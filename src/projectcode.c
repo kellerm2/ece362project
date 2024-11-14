@@ -161,11 +161,11 @@ int map(int value, int in_min, int in_max, int out_min, int out_max) {
 
 void update_visualizer(int volume) {
     // Map volume to a range suitable for your visualizer
-    int bar_height = map(volume, MIN_VOLUME, MAX_VOLUME, 0, MAX_BAR_HEIGHT);
+    int bar_height = map(volume, 0, 1023, 0, 255);
 
     // Update the visualizer (e.g., set the height of bars based on volume)
-    for (int i = 0; i < NUM_BARS; i++) {
-        tft_draw_bar(i * BAR_WIDTH, bar_height, COLOR_BLUE); // Draw each bar based on the volume
+    for (int i = 0; i < 10; i++) {
+        tft_draw_bar(i * 25, bar_height, COLOR_BLUE); // Draw each bar based on the volume
     }
 }
 
