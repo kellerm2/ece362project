@@ -106,7 +106,9 @@ void TIM2_IRQHandler() {
     bcn += 1;
     if (bcn >= BCSIZE)
         bcn = 0;
-    volume = bcsum / BCSIZE; // !!!! what is volume here, do we need this
+    int amplitude = bcsum / BCSIZE; // !!!! what is volume here, do we need this
+    update_visualizer(amplitude);
+
 }
 
 
@@ -156,6 +158,88 @@ void DMA1_Channel1_IRQHandler(void) {
     }
 }
 
+void spi_tft_init(void) {
+    // Enable clocks for GPIOA and SPI1
+    RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
+
+    // Configure GPIO pins for SPI1: PA5 (SCK), PA7 (MOSI), PA4 (CS), PA3 (DC), PA2 (RST)
+    GPIOA->MODER &= ~(GPIO_MODER_MODER5_Msk | GPIO_MODER_MODER7_Msk |
+                      GPIO_MODER_MODER4_Msk | GPIO_MODER_MODER3_Msk |
+                      GPIO_MODER_MODER2_Msk);
+    GPIOA->MODER |= (2 << GPIO_MODER_MODER5_Pos) | // SCK - Alternate Function
+                     (2 << GPIO_MODER_MODER7_Pos) | // MOSI - Alternate Function
+                     (1 << GPIO_MODER_MODER4_Pos) | // CS - General Output
+                     (1 << GPIO_MODER_MODER3_Pos) | // DC - General Output
+                     (1 << GPIO_MODER_MODER2_Pos);  // RST - General Output
+
+    GPIOA->AFR[0] &= ~(GPIO_AFRL_AFRL5_Msk | GPIO_AFRL_AFRL7_Msk);
+    GPIOA->AFR[0] |= (TFT_SPI_AF << GPIO_AFRL_AFRL5_Pos) | // SCK
+                     (TFT_SPI_AF << GPIO_AFRL_AFRL7_Pos);  // MOSI
+
+    // Configure output type as push-pull
+    GPIOA->OTYPER &= ~(GPIO_OTYPER_OT_5 | GPIO_OTYPER_OT_7 |
+                       GPIO_OTYPER_OT_4 | GPIO_OTYPER_OT_3 |
+                       GPIO_OTYPER_OT_2);
+
+    // Configure speed to high
+    GPIOA->OSPEEDR |= (3 << GPIO_OSPEEDR_OSPEEDR5_Pos) |
+                      (3 << GPIO_OSPEEDR_OSPEEDR7_Pos) |
+                      (3 << GPIO_OSPEEDR_OSPEEDR4_Pos) |
+                      (3 << GPIO_OSPEEDR_OSPEEDR3_Pos) |
+                      (3 << GPIO_OSPEEDR_OSPEEDR2_Pos);
+    
+    // No pull-up, no pull-down
+    GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPDR5_Msk | GPIO_PUPDR_PUPDR7_Msk |
+                      GPIO_PUPDR_PUPDR4_Msk | GPIO_PUPDR_PUPDR3_Msk |
+                      GPIO_PUPDR_PUPDR2_Msk);
+
+    // Initialize SPI1
+    TFT_SPI->CR1 = 0; // Reset configuration
+    TFT_SPI->CR1 |= SPI_CR1_MSTR;             // Master mode
+    TFT_SPI->CR1 |= SPI_CR1_SSM | SPI_CR1_SSI; // Software slave management
+    TFT_SPI->CR1 |= SPI_CR1_BR_0 | SPI_CR1_BR_1; // Baud rate control (f_PCLK/8)
+    TFT_SPI->CR1 |= SPI_CR1_SPE;              // Enable SPI
+}
+
+void spi_tft_send(uint16_t x, uint16_t y, uint16_t color) {
+    // Move to specified position on TFT
+    tft_set_position(x, y);
+
+    // Send color data for the pixel
+    SPI1->DR = color;
+    while (!(SPI1->SR & SPI_SR_TXE)); // Wait for transmission
+}
+
+void update_visualizer(int volume) {
+    // Map volume to a range suitable for your visualizer
+    int bar_height = map(volume, MIN_VOLUME, MAX_VOLUME, 0, MAX_BAR_HEIGHT);
+
+    // Update the visualizer (e.g., set the height of bars based on volume)
+    for (int i = 0; i < NUM_BARS; i++) {
+        tft_draw_bar(i * BAR_WIDTH, bar_height, COLOR_BLUE); // Draw each bar based on the volume
+    }
+}
+
+void tft_draw_bar(uint16_t x, uint16_t height, uint16_t color) {
+    // Draws a vertical bar representing an amplitude/frequency bin
+    for (uint16_t y = 0; y < height; y++) {
+        spi_tft_send(x, y, color);
+    }
+}
+
+#define DISPLAY_WIDTH 128
+#define MAX_BAR_HEIGHT 100
+#define COLOR_BLUE 0x001F
+
+void refresh_display() {
+    tft_clear_screen(COLOR_BLACK);
+    for (uint16_t i = 0; i < FFT_BIN_COUNT; i++) {
+        uint16_t bar_height = (uint16_t)(frequency_bins[i] * MAX_BAR_HEIGHT);
+        tft_draw_bar(i * 2, bar_height, COLOR_BLUE); // Each bin spaced by 2 pixels
+    }
+}
+
 // MAIN
 int main() {
     // enable
@@ -166,9 +250,6 @@ int main() {
     init_tim15(); // used for DMA
     setup_adc();
     init_tim2(); // used for ADC
-
-    // Initialize Audio Input
-    audio_setup();
     
     // Initialize Graphics
     graphics_init();
