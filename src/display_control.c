@@ -51,7 +51,6 @@ void adjust_brightness(uint8_t level);
 // Initialize the display control module
 void display_init(void) {
     init_display_timer();
-    init_pwm_brightness(); // Optional: Initialize PWM for brightness control
 }
 
 // Initialize TIM15 for display refresh rate management
@@ -76,37 +75,6 @@ void TIM15_IRQHandler(void) {
         DISPLAY_TIMER->SR &= ~TIM_SR_UIF;  // Clear update interrupt flag
         display_update_flag = 1;            // Set flag to update display
     }
-}
-
-// TIM3 Interrupt Handler for Brightness Control (Optional)
-void TIM3_IRQHandler(void) {
-    if (PWM_TIMER->SR & TIM_SR_UIF) {
-        PWM_TIMER->SR &= ~TIM_SR_UIF;      // Clear update interrupt flag
-        // Additional brightness control logic can be implemented here
-    }
-}
-
-// Refresh the display by invoking graphics rendering functions
-void refresh_display(void) {
-    // Clear display or specific areas if needed
-    // tft_clear_screen(COLOR_BLACK); // Optional: Clear screen before rendering
-    
-    // Render waveform and spectrum
-    // Assume audio_buffer and frequency_bins are accessible globally or passed as parameters
-    extern uint16_t audio_buffer[];
-    extern float frequency_bins[];
-    extern uint16_t AUDIO_BUFFER_SIZE;
-    extern uint16_t FFT_BIN_COUNT;
-    
-    render_waveform(audio_buffer, AUDIO_BUFFER_SIZE);
-    render_spectrum(frequency_bins, FFT_BIN_COUNT);
-}
-
-// Adjust the display brightness (0-255)
-void adjust_brightness(uint8_t level) {
-    if (level > 255) level = 255;
-    brightness_level = level;
-    PWM_TIMER->CCR1 = brightness_level; // Update PWM duty cycle
 }
 
 // ----------------------------------------------------------------------------

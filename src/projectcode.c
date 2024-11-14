@@ -6,7 +6,6 @@
 #include "spi_tft.h"
 #include "audio_input.h"
 #include "display_control.h"
-#include "graphics.h"
 
 
 void enable_ports(void) {
@@ -158,50 +157,6 @@ void DMA1_Channel1_IRQHandler(void) {
     }
 }
 
-void spi_tft_init(void) {
-    // Enable clocks for GPIOA and SPI1
-    RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
-    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
-
-    // Configure GPIO pins for SPI1: PA5 (SCK), PA7 (MOSI), PA4 (CS), PA3 (DC), PA2 (RST)
-    GPIOA->MODER &= ~(GPIO_MODER_MODER5_Msk | GPIO_MODER_MODER7_Msk |
-                      GPIO_MODER_MODER4_Msk | GPIO_MODER_MODER3_Msk |
-                      GPIO_MODER_MODER2_Msk);
-    GPIOA->MODER |= (2 << GPIO_MODER_MODER5_Pos) | // SCK - Alternate Function
-                     (2 << GPIO_MODER_MODER7_Pos) | // MOSI - Alternate Function
-                     (1 << GPIO_MODER_MODER4_Pos) | // CS - General Output
-                     (1 << GPIO_MODER_MODER3_Pos) | // DC - General Output
-                     (1 << GPIO_MODER_MODER2_Pos);  // RST - General Output
-
-    GPIOA->AFR[0] &= ~(GPIO_AFRL_AFRL5_Msk | GPIO_AFRL_AFRL7_Msk);
-    GPIOA->AFR[0] |= (TFT_SPI_AF << GPIO_AFRL_AFRL5_Pos) | // SCK
-                     (TFT_SPI_AF << GPIO_AFRL_AFRL7_Pos);  // MOSI
-
-    // Configure output type as push-pull
-    GPIOA->OTYPER &= ~(GPIO_OTYPER_OT_5 | GPIO_OTYPER_OT_7 |
-                       GPIO_OTYPER_OT_4 | GPIO_OTYPER_OT_3 |
-                       GPIO_OTYPER_OT_2);
-
-    // Configure speed to high
-    GPIOA->OSPEEDR |= (3 << GPIO_OSPEEDR_OSPEEDR5_Pos) |
-                      (3 << GPIO_OSPEEDR_OSPEEDR7_Pos) |
-                      (3 << GPIO_OSPEEDR_OSPEEDR4_Pos) |
-                      (3 << GPIO_OSPEEDR_OSPEEDR3_Pos) |
-                      (3 << GPIO_OSPEEDR_OSPEEDR2_Pos);
-    
-    // No pull-up, no pull-down
-    GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPDR5_Msk | GPIO_PUPDR_PUPDR7_Msk |
-                      GPIO_PUPDR_PUPDR4_Msk | GPIO_PUPDR_PUPDR3_Msk |
-                      GPIO_PUPDR_PUPDR2_Msk);
-
-    // Initialize SPI1
-    TFT_SPI->CR1 = 0; // Reset configuration
-    TFT_SPI->CR1 |= SPI_CR1_MSTR;             // Master mode
-    TFT_SPI->CR1 |= SPI_CR1_SSM | SPI_CR1_SSI; // Software slave management
-    TFT_SPI->CR1 |= SPI_CR1_BR_0 | SPI_CR1_BR_1; // Baud rate control (f_PCLK/8)
-    TFT_SPI->CR1 |= SPI_CR1_SPE;              // Enable SPI
-}
-
 void spi_tft_send(uint16_t x, uint16_t y, uint16_t color) {
     // Move to specified position on TFT
     tft_set_position(x, y);
@@ -252,7 +207,7 @@ int main() {
     init_tim2(); // used for ADC
     
     // Initialize Graphics
-    graphics_init();
+    tft_init();
     display_init();
     tft_clear_screen(COLOR_BLACK);
     
