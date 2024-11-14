@@ -14,6 +14,8 @@ volatile uint16_t audio_buffer[256];
 float frequency_bins[8];
 uint16_t FFT_BIN_COUNT = 8; // need for refresh in display_ctrl.c
 uint16_t AUDIO_BUFFER_SIZE = 256; // need for refresh in display_ctrl.c
+uint16_t FFT_SIZE = 8;
+
 
 kiss_fft_cpx input[FFT_SIZE];
 kiss_fft_cpx output[FFT_SIZE];
@@ -147,7 +149,7 @@ void fft_init() {
 
 void process_audio_data(void) {
     for (int i = 0; i < FFT_SIZE; i++) {
-        input[i].r = (float)(adc_samples[i] - 2048);  // Adjust if using a 12-bit ADC
+        input[i].r = (float)(audio_buffer[i] - 128);  // Adjust if using a 12-bit ADC
         input[i].i = 0;  // Real input, imaginary part is 0
     }
 
@@ -157,7 +159,7 @@ void process_audio_data(void) {
     // Calculate magnitudes and map to display
     for (int i = 0; i < FFT_SIZE / 2; i++) {  // Only half of spectrum for real input
         float magnitude = sqrtf(output[i].r * output[i].r + output[i].i * output[i].i);
-        display_on_tft(i, magnitude);  // Map each bin to a TFT bar
+        refresh_display(i, magnitude);  // Map each bin to a TFT bar
     }
 
 }
@@ -179,20 +181,6 @@ void spi_tft_send(uint16_t x, uint16_t y) {
     // Send color data for the pixel
     SPI1->DR = COLOR_BLUE;
     while (!(SPI1->SR & SPI_SR_TXE)); // Wait for transmission
-}
-
-int map(int value, int in_min, int in_max, int out_min, int out_max) {
-    return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
-void update_visualizer(int volume) {
-    // Map volume to a range suitable for your visualizer
-    int bar_height = map(volume, 0, 1023, 0, 255);
-
-    // Update the visualizer (e.g., set the height of bars based on volume)
-    for (int i = 0; i < 10; i++) {
-        tft_draw_bar(i * 25, bar_height); // Draw each bar based on the volume
-    }
 }
 
 void tft_draw_bar(uint16_t x, uint16_t height) {
@@ -231,16 +219,6 @@ int main() {
 
     // SPI TFT
     spi_tft_init();
-    // Draw a red pixel at (10, 10)
-    tft_draw_pixel(10, 10, COLOR_RED);
-
-    // Draw a filled green rectangle
-    for (uint16_t y = 50; y < 150; y++) {
-        for (uint16_t x = 60; x < 180; x++) {
-            tft_draw_pixel(x, y, COLOR_GREEN);
-        }
-    }
-
     fft_init();
 
     while(1) {
