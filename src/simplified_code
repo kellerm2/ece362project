@@ -32,6 +32,19 @@ void nano_wait(int);
 #define TFT_HEIGHT 320
 uint16_t adc_buffer[TFT_WIDTH];
 uint16_t scaled_buffer[TFT_WIDTH];
+#define MAX_AUDIO_AMPLITUDE 4095 // because we have 12-bit ADC ??
+
+// Colors for TFT
+#define BLACK 0x0000
+#define WHITE 0xFFFF
+#define RED   0xF800
+#define GREEN 0x07E0
+#define BLUE  0x001F
+#define YELLOW 0xFFE0
+#define CYAN  0x07FF
+#define MAGENTA 0xF81F
+#define ORANGE 0xFFA0
+#define PURPLE 0x7C00
 
 //============================================================================
 // setup_dma() + enable_dma()
@@ -105,6 +118,27 @@ void spi_init(void) {
     SPI1->CR1 |= SPI_CR1_SPE;
 
 }
+
+void draw_visualizer_bars() {
+    int data_length = TFT_WIDTH;
+    int bar_width = TFT_WIDTH / data_length;  // Calculate width of each bar
+    int max_bar_height = TFT_HEIGHT;         // Max height for scaling
+
+    for (int i = 0; i < data_length; i++) {
+        // // Normalize audio data to fit within the display height
+        int bar_height = scaled_buffer[i]; // CHECK THIS??
+
+        // Determine the x and y position for the bar
+        int x = i * bar_width;
+        int y = TFT_HEIGHT - bar_height; // Bars grow upwards
+
+        // Draw a filled rectangle for the bar
+        // if bar_height thresholds, then change the color that is called with fill Rect
+        fillRect(x, y, bar_width - 2, bar_height, WHITE); // Subtract 2 for spacing, NEED LIBRARY FOR THIS
+    }
+}
+
+
 //============================================================================
 // All the things you need to test your subroutines.
 //============================================================================
@@ -118,7 +152,7 @@ int main(void) {
     while (1)
     {
         scale_adc_values();
-        // draw_visualizer_bars(); not done yet- look into tft libraries
+        draw_visualizer_bars(); // not done yet- look into tft libraries
         nano_wait(1000000000);
     }
 
