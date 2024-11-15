@@ -1,0 +1,20 @@
+Initialize and Enable ADC:
+
+Configure the ADC to sample input signals.
+Enable continuous or triggered conversion mode to continuously read analog data from the input.
+Start ADC conversion and ensure that the ADC data register (ADC1->DR) is ready to be read by the DMA.
+Configure and Enable DMA:
+
+Configure the DMA channel to transfer ADC conversion results to the adc_buffer.
+Set the DMA in circular mode so it continuously fills the buffer as new data comes in.
+Link the DMA channel to the ADC data register, so it automatically fetches new ADC values as they become available.
+Scale ADC Values for Display:
+
+As the DMA fills the adc_buffer, use a separate function or loop to scale the data from adc_buffer into scaled_buffer.
+This scaling process can occur at a periodic interval, or you can monitor the DMA transfer complete flag to trigger scaling after each buffer cycle.
+Scale each value from the ADC’s range (0–4096 for 12-bit resolution) to the TFT display’s vertical resolution (e.g., 0–320 pixels).
+Send Scaled Values to TFT via SPI:
+
+Use the scaled_buffer values to draw bars on the TFT.
+The SPI peripheral handles data transmission to the TFT, using commands and data sequences defined in your TFT library.
+For each x position on the screen, draw a vertical bar whose height corresponds to the scaled ADC value, creating the visualizer effect.
