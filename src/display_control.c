@@ -29,8 +29,7 @@
 // Flag to indicate that a display update is required
 volatile uint8_t display_update_flag = 0;
 
-// Current brightness level (0-255)
-volatile uint8_t brightness_level = 255;
+
 
 // ----------------------------------------------------------------------------
 // Function Prototypes
@@ -38,11 +37,11 @@ volatile uint8_t brightness_level = 255;
 
 void display_init(void);
 void init_display_timer(void);
-void init_pwm_brightness(void);
+
 void TIM15_IRQHandler(void);
 void TIM3_IRQHandler(void); // Optional for brightness control
 void refresh_display(void);
-void adjust_brightness(uint8_t level);
+
 
 // ----------------------------------------------------------------------------
 // Function Implementations

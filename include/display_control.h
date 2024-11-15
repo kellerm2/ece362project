@@ -23,11 +23,7 @@
 // Global Variables
 // ----------------------------------------------------------------------------
 
-// Flag to indicate that a display update is required
-volatile uint8_t display_update_flag = 0;
 
-// Current brightness level (0-255)
-volatile uint8_t brightness_level = 255;
 
 // ----------------------------------------------------------------------------
 // Function Prototypes
