@@ -1,0 +1,125 @@
+/**
+  ******************************************************************************
+  * @file    main.c
+  * @author  Weili An, Niraj Menon
+  * @date    Jan 24 2024
+  * @brief   ECE 362 Project
+  ******************************************************************************
+*/
+
+/**
+******************************************************************************/
+
+// Fill out your username, otherwise your completion code will have the 
+// wrong username!
+const char* username = "vanderg0";
+
+/******************************************************************************
+*/ 
+
+#include "stm32f0xx.h"
+#include <math.h>   // for M_PI
+#include <stdint.h>
+#include <stdio.h>
+
+void nano_wait(int);
+
+//=============================================================================
+// Part 1: 7-segment display update with DMA
+//=============================================================================
+
+#define TFT_WIDTH 240
+#define TFT_HEIGHT 320
+uint16_t adc_buffer[TFT_WIDTH];
+uint16_t scaled_buffer[TFT_WIDTH];
+
+//============================================================================
+// setup_dma() + enable_dma()
+//============================================================================
+void setup_dma(void) {
+    
+    RCC->AHBENR |= RCC_AHBENR_DMA1EN;
+    DMA1_Channel5->CCR &= ~DMA_CCR_EN;
+    DMA1_Channel5->CMAR = (uint32_t)adc_buffer;
+    DMA1_Channel5->CPAR = (uint32_t)&(ADC1->DR);
+    DMA1_Channel5->CNDTR = TFT_WIDTH;
+    DMA1_Channel5->CCR |= DMA_CCR_DIR;
+    DMA1_Channel5->CCR |= DMA_CCR_MINC;
+    DMA1_Channel5->CCR |= DMA_CCR_MSIZE_0;
+    DMA1_Channel5->CCR |= DMA_CCR_PSIZE_0;
+    DMA1_Channel5->CCR |= DMA_CCR_CIRC;
+    DMA1_Channel5->CCR |= DMA_CCR_EN;
+
+    ADC1->CFGR1 |= ADC_CFGR1_DMAEN;
+
+
+}
+
+
+//============================================================================
+// setup_adc()
+//============================================================================
+void setup_adc(void) {
+
+RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+GPIOA->MODER &= ~(0x3 << (1 * 2));
+GPIOA->MODER |= (0x3 << (1 * 2));
+RCC->APB2ENR |= RCC_APB2ENR_ADCEN;
+RCC->CR2 |= RCC_CR2_HSI14ON;
+while ((RCC->CR2 & RCC_CR2_HSI14RDY) == 0){}
+ADC1->CR |= ADC_CR_ADEN;
+while ((ADC1->ISR & ADC_ISR_ADRDY) == 0) {}
+ADC1->CHSELR |= ADC_CHSELR_CHSEL1;
+while ((ADC1->ISR & ADC_ISR_ADRDY) == 0) {}
+    
+
+}
+
+void scale_adc_values(void) {
+    for (int i = 0; i < TFT_HEIGHT; i++) {
+        scaled_buffer[i] = (adc_buffer[i] * TFT_HEIGHT) / 4096;
+    }
+}
+
+void spi_init(void) {
+    
+    RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
+
+    GPIOA->MODER &= ~((3 << (5 * 2)) | (3 << (7 * 2)));
+    GPIOA->MODER |= ((2 << (5 * 2)) | (2 << (7 * 2)));
+    GPIOA->AFR[0] &= ~((15 << (5 * 4)) | (15 << (7 * 4)));
+
+    SPI1->CR1 &= ~SPI_CR1_SPE;
+
+    SPI1->CR1 = 0;
+    SPI1->CR1 |= SPI_CR1_MSTR;
+    SPI1->CR1 |= SPI_CR1_BR;
+
+    SPI1->CR2 &= ~SPI_CR2_DS;
+    SPI1->CR2 |= (0x7 << SPI_CR2_DS_Pos);
+
+    SPI1->CR2 |= SPI_CR2_SSOE | SPI_CR2_NSSP;
+    SPI1->CR2 |= SPI_CR2_TXDMAEN;
+
+    SPI1->CR1 |= SPI_CR1_SPE;
+
+}
+//============================================================================
+// All the things you need to test your subroutines.
+//============================================================================
+int main(void) {
+    internal_clock();
+    setup_adc();
+    setup_dma();
+    ADC1->CR |= ADC_CR_ADSTART;
+    tft_init();
+    tft_fillScreen(TFT_CLEAR);
+    while (1)
+    {
+        scale_adc_values();
+        draw_visualizer_bars();
+        nano_wait(1000000000);
+    }
+
+}
