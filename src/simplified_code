@@ -118,7 +118,7 @@ int main(void) {
     while (1)
     {
         scale_adc_values();
-        draw_visualizer_bars();
+        // draw_visualizer_bars(); not done yet- look into tft libraries
         nano_wait(1000000000);
     }
 
