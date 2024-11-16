@@ -96,29 +96,104 @@ void scale_adc_values(void) {
     }
 }
 
-void spi_init(void) {
+// void spi_init(void) {
     
-    RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
-    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
+//     RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+//     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
 
-    GPIOA->MODER &= ~((3 << (5 * 2)) | (3 << (7 * 2)));
-    GPIOA->MODER |= ((2 << (5 * 2)) | (2 << (7 * 2)));
-    GPIOA->AFR[0] &= ~((15 << (5 * 4)) | (15 << (7 * 4)));
+//     GPIOA->MODER &= ~((3 << (5 * 2)) | (3 << (7 * 2)));
+//     GPIOA->MODER |= ((2 << (5 * 2)) | (2 << (7 * 2)));
+//     GPIOA->AFR[0] &= ~((15 << (5 * 4)) | (15 << (7 * 4)));
+
+//     SPI1->CR1 &= ~SPI_CR1_SPE;
+
+//     SPI1->CR1 = 0;
+//     SPI1->CR1 |= SPI_CR1_MSTR;
+//     SPI1->CR1 |= SPI_CR1_BR;
+
+//     SPI1->CR2 &= ~SPI_CR2_DS;
+//     SPI1->CR2 |= (0x7 << SPI_CR2_DS_Pos);
+
+//     SPI1->CR2 |= SPI_CR2_SSOE | SPI_CR2_NSSP;
+//     SPI1->CR2 |= SPI_CR2_TXDMAEN;
+
+//     SPI1->CR1 |= SPI_CR1_SPE;
+
+// }
+
+void init_spi1_slow() {
+    // Enable the clocks for GPIOB and SPI1
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;  // Enable GPIOB clock
+    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;   // Enable SPI1 clock
 
     SPI1->CR1 &= ~SPI_CR1_SPE;
 
-    SPI1->CR1 = 0;
-    SPI1->CR1 |= SPI_CR1_MSTR;
-    SPI1->CR1 |= SPI_CR1_BR;
+    // Configure GPIOB pins for SPI (PB3 = SCK, PB4 = MISO, PB5 = MOSI)
+    GPIOB->MODER &= ~((0b11 << (3 * 2)) | (0b11 << (4 * 2)) | (0b11 << (5 * 2))); // Clear mode
+    GPIOB->MODER |= ((0b10 << (3 * 2)) | (0b10 << (4 * 2)) | (0b10 << (5 * 2)));       // Set to Alternate Function (AF)
+    
+    GPIOB->AFR[0] &= ~(GPIO_AFRL_AFSEL3_Msk | GPIO_AFRL_AFSEL4_Msk | GPIO_AFRL_AFSEL5_Msk); // Clear AFR
+    GPIOB->AFR[0] |= (0 << GPIO_AFRL_AFSEL3_Pos) | (0 << GPIO_AFRL_AFSEL4_Pos) | (0 << GPIO_AFRL_AFSEL5_Pos); // Set AF5 (SPI1)
 
-    SPI1->CR2 &= ~SPI_CR2_DS;
-    SPI1->CR2 |= (0x7 << SPI_CR2_DS_Pos);
+    GPIOB->OSPEEDR |= ((0b11 << (3 * 2)) | (0b11 << (4 * 2)) | (0b11 << (5 * 2))); // High-speed GPIO
+    // GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD3_Msk | GPIO_PUPDR_PUPD4_Msk | GPIO_PUPDR_PUPD5_Msk); // No pull-up/pull-down
 
-    SPI1->CR2 |= SPI_CR2_SSOE | SPI_CR2_NSSP;
-    SPI1->CR2 |= SPI_CR2_TXDMAEN;
+    // // Reset SPI1 to default state
+    // SPI1->CR1 = 0;
+    // SPI1->CR2 = 0;
 
+    // Configure SPI1 settings
+    SPI1->CR1 |= SPI_CR1_MSTR;              // Master mode
+    SPI1->CR1 |= SPI_CR1_BR;                // Set baud rate divisor to max (111 = fPCLK / 256)
+    SPI1->CR1 |= SPI_CR1_SSM | SPI_CR1_SSI; // Software Slave Management and Internal Slave Select
+    SPI1->CR2 |= (0b0111 << SPI_CR2_DS_Pos);   // 8-bit data size (default)
+    SPI1->CR2 |= SPI_CR2_FRXTH;             // Set FIFO reception threshold to 8-bit
+
+    // Enable SPI1
     SPI1->CR1 |= SPI_CR1_SPE;
+}
 
+void enable_sdcard() {
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;  // Enable GPIOB clock
+    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;   // Enable SPI1 clock
+
+    GPIOB->BRR = 1 << 2;
+}
+
+void disable_sdcard() {
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;  // Enable GPIOB clock
+    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;   // Enable SPI1 clock
+
+    GPIOB->BSRR = 1 << 2;
+}
+
+void init_sdcard_io() {
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;  // Enable GPIOB clock
+    init_spi1_slow();
+    GPIOB->MODER &= ~(0b11 << (2 * 2)); //Configures PB2 as an output.
+    GPIOB->MODER |= (0b01 << (2 * 2));
+    disable_sdcard();
+}
+
+void sdcard_io_high_speed() {
+    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
+
+    SPI1->CR1 &= ~SPI_CR1_SPE; // Disable the SPI1 channel.
+    SPI1->CR1 |= 0b001 << SPI_CR1_BR_Pos; // Set the SPI1 Baud Rate register so that the clock rate is 12 MHz. (You may need to set this lower if your SD card does not reliably work at this rate.)
+    SPI1->CR1 |= SPI_CR1_SPE; // Re-enable the SPI1 channel.
+}
+
+void init_lcd_spi() {
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN; 
+    // Configure PB8, PB11, and PB14 as GPIO outputs. Don't forget the clock to GPIOB.
+    GPIOB->MODER &= ~(0b11 << (8 * 2));
+    GPIOB->MODER &= ~(0b11 << (11 * 2));
+    GPIOB->MODER &= ~(0b11 << (14 * 2));
+    GPIOB->MODER |= (0b01 << (8 * 2));
+    GPIOB->MODER |= (0b01 << (11 * 2));
+    GPIOB->MODER |= (0b01 << (14 * 2));
+    init_spi1_slow(); //Call init_spi1_slow() to configure SPI1.
+    sdcard_io_high_speed(); //Call sdcard_io_high_speed() to make SPI1 fast
 }
 
 void draw_visualizer_bars() {
@@ -149,10 +224,10 @@ int main(void) {
     setup_adc();
     setup_dma();
     ADC1->CR |= ADC_CR_ADSTART;
+    void init_lcd_spi();
+
     LCD_Setup();
-    LCD_SetWindow();
-    LCD_Init();
-    tft_fillScreen(TFT_CLEAR);
+    LCD_Clear(BLUE);
     while (1)
     {
         scale_adc_values();
