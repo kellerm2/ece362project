@@ -2,7 +2,7 @@
 #include "stm32f0xx.h"
 #include "ff.h"
 #include "lcd.h"
-#include "tty.h"
+//#include "tty.h"
 #include "commands.h"
 #include <string.h>
 #include <stdio.h>

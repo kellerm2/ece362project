@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "math.h": "c",
-        "simplified_code": "cpp"
+        "simplified_code": "cpp",
+        "string.h": "c"
     }
 }
