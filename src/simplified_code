@@ -21,6 +21,8 @@ const char* username = "vanderg0";
 #include <math.h>   // for M_PI
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include "lcd.h"
 
 void nano_wait(int);
 
@@ -134,7 +136,7 @@ void draw_visualizer_bars() {
 
         // Draw a filled rectangle for the bar
         // if bar_height thresholds, then change the color that is called with fill Rect
-        fillRect(x, y, bar_width - 2, bar_height, WHITE); // Subtract 2 for spacing, NEED LIBRARY FOR THIS
+        LCD_DrawFillRectangle(x, y, bar_width, bar_height, WHITE); // NEED LIBRARY FOR THIS
     }
 }
 
@@ -147,7 +149,9 @@ int main(void) {
     setup_adc();
     setup_dma();
     ADC1->CR |= ADC_CR_ADSTART;
-    tft_init();
+    LCD_Setup();
+    LCD_SetWindow();
+    LCD_Init();
     tft_fillScreen(TFT_CLEAR);
     while (1)
     {
