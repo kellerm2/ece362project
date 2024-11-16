@@ -223,16 +223,17 @@ int main(void) {
     setup_adc();
     setup_dma();
     ADC1->CR |= ADC_CR_ADSTART;
-    //void init_lcd_spi();
+    void init_lcd_spi();
 
-    //LCD_Setup();
-    //LCD_Clear(BLUE);
-    while (1)
-    {
-        enable_sdcard();
-        draw_visualizer_bars(); // not done yet- look into tft libraries
-        disable_sdcard();
-        nano_wait(1000000000);
-    }
+    LCD_Setup();
+    LCD_Clear(GREEN);
+    LCD_DrawFillRectangle(0, 0, 100, 100, BLUE);
+    // while (1)
+    // {
+    //     enable_sdcard();
+    //     draw_visualizer_bars(); // not done yet- look into tft libraries
+    //     disable_sdcard();
+    //     nano_wait(1000000000);
+    // }
 
 }
