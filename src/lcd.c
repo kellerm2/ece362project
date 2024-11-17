@@ -341,13 +341,13 @@ __attribute((weak)) void init_lcd_spi(void)
     printf("init_lcd_spi() not defined.");
 }
 
-void LCD_Setup() {
-    init_lcd_spi();
-    tft_select(0);
-    tft_reset(0);
-    tft_reg_select(0);
-    LCD_Init(tft_reset, tft_select, tft_reg_select);
-}
+// void LCD_Setup() {
+//     init_lcd_spi();
+//     tft_select(0);
+//     tft_reset(0);
+//     tft_reg_select(0);
+//     LCD_Init(tft_reset, tft_select, tft_reg_select);
+// }
 
 //===========================================================================
 // Select a subset of the display to work on, and issue the "Write RAM"

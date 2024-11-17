@@ -23,6 +23,7 @@ const char* username = "vanderg0";
 #include <stdio.h>
 #include <stdlib.h>
 #include "lcd.h"
+#include "commands.h"
 
 void nano_wait(int);
 
@@ -141,35 +142,35 @@ void init_spi1_slow() {
     SPI1->CR1 |= SPI_CR1_SPE;
 }
 
-void enable_sdcard() {
-    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;  // Enable GPIOB clock
-    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;   // Enable SPI1 clock
+// void enable_sdcard() {
+//     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;  // Enable GPIOB clock
+//     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;   // Enable SPI1 clock
 
-    GPIOB->BRR = 1 << 2;
-}
+//     GPIOB->BRR = 1 << 2;
+// }
 
-void disable_sdcard() {
-    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;  // Enable GPIOB clock
-    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;   // Enable SPI1 clock
+// void disable_sdcard() {
+//     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;  // Enable GPIOB clock
+//     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;   // Enable SPI1 clock
 
-    GPIOB->BSRR = 1 << 2;
-}
+//     GPIOB->BSRR = 1 << 2;
+// }
 
-void init_sdcard_io() {
-    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;  // Enable GPIOB clock
-    init_spi1_slow();
-    GPIOB->MODER &= ~(0b11 << (2 * 2)); //Configures PB2 as an output.
-    GPIOB->MODER |= (0b01 << (2 * 2));
-    disable_sdcard();
-}
+// void init_sdcard_io() {
+//     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;  // Enable GPIOB clock
+//     init_spi1_slow();
+//     GPIOB->MODER &= ~(0b11 << (2 * 2)); //Configures PB2 as an output.
+//     GPIOB->MODER |= (0b01 << (2 * 2));
+//     disable_sdcard();
+// }
 
-void sdcard_io_high_speed() {
-    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
+// void sdcard_io_high_speed() {
+//     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
 
-    SPI1->CR1 &= ~SPI_CR1_SPE; // Disable the SPI1 channel.
-    SPI1->CR1 |= 0b001 << SPI_CR1_BR_Pos; // Set the SPI1 Baud Rate register so that the clock rate is 12 MHz. (You may need to set this lower if your SD card does not reliably work at this rate.)
-    SPI1->CR1 |= SPI_CR1_SPE; // Re-enable the SPI1 channel.
-}
+//     SPI1->CR1 &= ~SPI_CR1_SPE; // Disable the SPI1 channel.
+//     SPI1->CR1 |= 0b001 << SPI_CR1_BR_Pos; // Set the SPI1 Baud Rate register so that the clock rate is 12 MHz. (You may need to set this lower if your SD card does not reliably work at this rate.)
+//     SPI1->CR1 |= SPI_CR1_SPE; // Re-enable the SPI1 channel.
+// }
 
 void init_lcd_spi() {
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN; 
@@ -181,7 +182,7 @@ void init_lcd_spi() {
     GPIOB->MODER |= (0b01 << (11 * 2));
     GPIOB->MODER |= (0b01 << (14 * 2));
     init_spi1_slow(); //Call init_spi1_slow() to configure SPI1.
-    sdcard_io_high_speed(); //Call sdcard_io_high_speed() to make SPI1 fast
+    //sdcard_io_high_speed(); //Call sdcard_io_high_speed() to make SPI1 fast
 }
 
 // uint8_t spi_transfer(uint8_t data) {
@@ -194,6 +195,14 @@ void init_lcd_spi() {
 //     // Return the received data
 //     return SPI1->DR;
 // }
+
+void LCD_Setup() {
+    init_lcd_spi();
+    tft_select(0);
+    tft_reset(0);
+    tft_reg_select(0);
+    LCD_Init(tft_reset, tft_select, tft_reg_select);
+}
 
 void draw_visualizer_bars() {
     int data_length = TFT_WIDTH;
@@ -210,7 +219,7 @@ void draw_visualizer_bars() {
 
         // Draw a filled rectangle for the bar
         // if bar_height thresholds, then change the color that is called with fill Rect
-        LCD_DrawFillRectangle(x, y, bar_width, bar_height, WHITE); // NEED LIBRARY FOR THIS
+        LCD_DrawFillRectangle(x, y, bar_width, bar_height, WHITE);
     }
 }
 
@@ -223,17 +232,15 @@ int main(void) {
     setup_adc();
     setup_dma();
     ADC1->CR |= ADC_CR_ADSTART;
-    void init_lcd_spi();
+    //void init_lcd_spi();
 
-    LCD_Setup();
+    LCD_Setup(); // should call init_lcd_spi() ??
     LCD_Clear(GREEN);
     LCD_DrawFillRectangle(0, 0, 100, 100, BLUE);
-    // while (1)
-    // {
-    //     enable_sdcard();
-    //     draw_visualizer_bars(); // not done yet- look into tft libraries
-    //     disable_sdcard();
-    //     nano_wait(1000000000);
-    // }
+    while (1)
+    {
+        draw_visualizer_bars(); // does this need to be interrupt ????
+        nano_wait(1000000000);
+    }
 
 }
