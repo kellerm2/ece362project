@@ -51,7 +51,7 @@ void setup_dma(void) {
     
     RCC->AHBENR |= RCC_AHBENR_DMA1EN;
     DMA1_Channel5->CCR &= ~DMA_CCR_EN;
-    //DMA1_Channel5->CMAR = (uint32_t)adc_buffer;
+    DMA1_Channel5->CMAR = (uint32_t)adc_buffer;
     DMA1_Channel5->CPAR = (uint32_t)&(ADC1->DR);
     DMA1_Channel5->CNDTR = TFT_WIDTH;
     DMA1_Channel5->CCR |= DMA_CCR_DIR;
@@ -62,10 +62,7 @@ void setup_dma(void) {
     DMA1_Channel5->CCR |= DMA_CCR_EN;
 
     ADC1->CFGR1 |= ADC_CFGR1_DMAEN;
-
-
 }
-
 
 //============================================================================
 // setup_adc()
@@ -82,8 +79,6 @@ ADC1->CR |= ADC_CR_ADEN;
 while ((ADC1->ISR & ADC_ISR_ADRDY) == 0) {}
 ADC1->CHSELR |= ADC_CHSELR_CHSEL1;
 while ((ADC1->ISR & ADC_ISR_ADRDY) == 0) {}
-    
-
 }
 
 void scale_adc_values(void) {
@@ -218,7 +213,8 @@ void draw_visualizer_bars() {
 
         // Draw a filled rectangle for the bar
         // if bar_height thresholds, then change the color that is called with fill Rect
-        LCD_DrawFillRectangle(x, y, bar_width, bar_height, GREEN);
+        LCD_DrawFillRectangle(x, y, x+1, bar_height, GREEN);
+        nano_wait(10000000);
     }
 }
 
@@ -236,15 +232,17 @@ int main(void) {
 
     LCD_Setup(); // should call init_lcd_spi() ??
     //LCD_Clear(GREEN);
-    //LCD_DrawFillRectangle(0, 0, 100, 100, BLUE);
-    // while (1)
-    // {
-    for (int i = 0; i <TFT_WIDTH; i++) {
-        adc_buffer[i] = adc_buffer[i] / 5;
+    LCD_DrawFillRectangle(0, 0, 200, 300, BLUE);
+    int div = 1;
+    while (1)
+    {
+        for (int i = 0; i <TFT_WIDTH; i++) {
+            adc_buffer[i] = adc_buffer[i] / div;
+        }
+        draw_visualizer_bars(); // does this need to be interrupt ????
+        LCD_Clear(MAGENTA);//     nano_wait(1000000000);
+        div *= 2;
     }
-    draw_visualizer_bars(); // does this need to be interrupt ????
-    //     nano_wait(1000000000);
-    // }
 
     return 0;
 }
