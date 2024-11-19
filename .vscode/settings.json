@@ -2,6 +2,9 @@
     "files.associations": {
         "math.h": "c",
         "simplified_code": "cpp",
-        "string.h": "c"
+        "string.h": "c",
+        "lcd.h": "c",
+        "stm32f0xx.h": "c",
+        "stdint.h": "c"
     }
 }

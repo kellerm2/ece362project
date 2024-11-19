@@ -26,6 +26,7 @@ const char* username = "vanderg0";
 #include "commands.h"
 
 void nano_wait(int);
+void draw_visualizer_bars();
 
 //=============================================================================
 // Part 1: 7-segment display update with DMA
@@ -33,7 +34,13 @@ void nano_wait(int);
 
 #define TFT_WIDTH 240
 #define TFT_HEIGHT 320
-uint16_t adc_buffer[TFT_WIDTH];
+uint16_t adc_buffer[TFT_WIDTH] = {3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,5000,5000,5000,5000,5000,5000,
+5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,
+5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,
+5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,
+5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,
+5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,
+5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000};
 uint16_t scaled_buffer[TFT_WIDTH];
 #define MAX_AUDIO_AMPLITUDE 4095 // because we have 12-bit ADC ??
 
@@ -44,7 +51,7 @@ void setup_dma(void) {
     
     RCC->AHBENR |= RCC_AHBENR_DMA1EN;
     DMA1_Channel5->CCR &= ~DMA_CCR_EN;
-    DMA1_Channel5->CMAR = (uint32_t)adc_buffer;
+    //DMA1_Channel5->CMAR = (uint32_t)adc_buffer;
     DMA1_Channel5->CPAR = (uint32_t)&(ADC1->DR);
     DMA1_Channel5->CNDTR = TFT_WIDTH;
     DMA1_Channel5->CCR |= DMA_CCR_DIR;
@@ -80,8 +87,9 @@ while ((ADC1->ISR & ADC_ISR_ADRDY) == 0) {}
 }
 
 void scale_adc_values(void) {
-    for (int i = 0; i < TFT_HEIGHT; i++) {
-        scaled_buffer[i] = (adc_buffer[i] * TFT_HEIGHT) / 4096;
+    for (int i = 0; i < TFT_WIDTH; i++) {
+        float temp = (float) adc_buffer[i] / 4096; 
+        scaled_buffer[i] = temp * TFT_HEIGHT;
     }
 }
 
@@ -133,44 +141,15 @@ void init_spi1_slow() {
 
     // Configure SPI1 settings
     SPI1->CR1 |= SPI_CR1_MSTR;              // Master mode
-    SPI1->CR1 |= SPI_CR1_BR;                // Set baud rate divisor to max (111 = fPCLK / 256)
+    SPI1->CR1 |= 0b000 << SPI_CR1_BR_Pos;   // Set baud rate divisor to max (000 = fPCLK / 2)
     SPI1->CR1 |= SPI_CR1_SSM | SPI_CR1_SSI; // Software Slave Management and Internal Slave Select
     SPI1->CR2 |= (0b0111 << SPI_CR2_DS_Pos);   // 8-bit data size (default)
     SPI1->CR2 |= SPI_CR2_FRXTH;             // Set FIFO reception threshold to 8-bit
+    SPI1->CR2 |= SPI_CR2_TXDMAEN;
 
     // Enable SPI1
     SPI1->CR1 |= SPI_CR1_SPE;
 }
-
-// void enable_sdcard() {
-//     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;  // Enable GPIOB clock
-//     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;   // Enable SPI1 clock
-
-//     GPIOB->BRR = 1 << 2;
-// }
-
-// void disable_sdcard() {
-//     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;  // Enable GPIOB clock
-//     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;   // Enable SPI1 clock
-
-//     GPIOB->BSRR = 1 << 2;
-// }
-
-// void init_sdcard_io() {
-//     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;  // Enable GPIOB clock
-//     init_spi1_slow();
-//     GPIOB->MODER &= ~(0b11 << (2 * 2)); //Configures PB2 as an output.
-//     GPIOB->MODER |= (0b01 << (2 * 2));
-//     disable_sdcard();
-// }
-
-// void sdcard_io_high_speed() {
-//     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
-
-//     SPI1->CR1 &= ~SPI_CR1_SPE; // Disable the SPI1 channel.
-//     SPI1->CR1 |= 0b001 << SPI_CR1_BR_Pos; // Set the SPI1 Baud Rate register so that the clock rate is 12 MHz. (You may need to set this lower if your SD card does not reliably work at this rate.)
-//     SPI1->CR1 |= SPI_CR1_SPE; // Re-enable the SPI1 channel.
-// }
 
 void init_lcd_spi() {
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN; 
@@ -182,7 +161,6 @@ void init_lcd_spi() {
     GPIOB->MODER |= (0b01 << (11 * 2));
     GPIOB->MODER |= (0b01 << (14 * 2));
     init_spi1_slow(); //Call init_spi1_slow() to configure SPI1.
-    //sdcard_io_high_speed(); //Call sdcard_io_high_speed() to make SPI1 fast
 }
 
 // uint8_t spi_transfer(uint8_t data) {
@@ -196,30 +174,51 @@ void init_lcd_spi() {
 //     return SPI1->DR;
 // }
 
-void LCD_Setup() {
-    init_lcd_spi();
-    tft_select(0);
-    tft_reset(0);
-    tft_reg_select(0);
-    LCD_Init(tft_reset, tft_select, tft_reg_select);
+// void LCD_Setup() {
+//     init_lcd_spi();
+//     tft_select(0);
+//     tft_reset(0);
+//     tft_reg_select(0);
+//     LCD_Init(tft_reset, tft_select, tft_reg_select);
+// }
+
+void init_tim15(void) {
+    RCC->APB2ENR |= RCC_APB2ENR_TIM15EN;
+    // 48M / 1k = 48k = PSC * ARR
+    TIM15->PSC = 999; // (999 + 1) = 1k
+    TIM15->ARR = 47; // (47 + 1) = 48
+
+    TIM15->DIER |= TIM_DIER_UDE;
+    NVIC_EnableIRQ(TIM15_IRQn);
+    TIM15->CR1 |= TIM_CR1_CEN;
+}
+
+void TIM15_IRQHandler();
+
+void TIM15_IRQHandler() {
+    TIM15->SR &= ~TIM_SR_UIF;
+
+    LCD_DrawFillRectangle(0, 0, 100, 100, BLUE);
+    draw_visualizer_bars();
 }
 
 void draw_visualizer_bars() {
     int data_length = TFT_WIDTH;
     int bar_width = TFT_WIDTH / data_length;  // Calculate width of each bar
     int max_bar_height = TFT_HEIGHT;         // Max height for scaling
+    scale_adc_values();
 
     for (int i = 0; i < data_length; i++) {
-        scale_adc_values(); // // Normalize audio data to fit within the display height
+         // // Normalize audio data to fit within the display height
         int bar_height = scaled_buffer[i]; // CHECK THIS??
 
         // Determine the x and y position for the bar
-        int x = i * bar_width;
-        int y = TFT_HEIGHT - bar_height; // Bars grow upwards
+        int x = i;
+        int y = 0; // Bars grow upwards
 
         // Draw a filled rectangle for the bar
         // if bar_height thresholds, then change the color that is called with fill Rect
-        LCD_DrawFillRectangle(x, y, bar_width, bar_height, WHITE);
+        LCD_DrawFillRectangle(x, y, bar_width, bar_height, GREEN);
     }
 }
 
@@ -231,16 +230,21 @@ int main(void) {
     internal_clock();
     setup_adc();
     setup_dma();
+    init_tim15();
     ADC1->CR |= ADC_CR_ADSTART;
-    //void init_lcd_spi();
+    init_lcd_spi();
 
     LCD_Setup(); // should call init_lcd_spi() ??
-    LCD_Clear(GREEN);
-    LCD_DrawFillRectangle(0, 0, 100, 100, BLUE);
-    while (1)
-    {
-        draw_visualizer_bars(); // does this need to be interrupt ????
-        nano_wait(1000000000);
+    //LCD_Clear(GREEN);
+    //LCD_DrawFillRectangle(0, 0, 100, 100, BLUE);
+    // while (1)
+    // {
+    for (int i = 0; i <TFT_WIDTH; i++) {
+        adc_buffer[i] = adc_buffer[i] / 5;
     }
+    draw_visualizer_bars(); // does this need to be interrupt ????
+    //     nano_wait(1000000000);
+    // }
 
+    return 0;
 }
