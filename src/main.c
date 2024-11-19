@@ -233,8 +233,8 @@ void TIM2_IRQHandler() {
 void init_tim2(void) {
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
     // 48M / 10 = 4.8M = PSC * ARR
-    TIM2->PSC = 9999; // (9999 + 1) = 10k
-    TIM2->ARR = 479; // (479 + 1) = 480
+    TIM2->PSC = 999; // (9999 + 1) = 10k
+    TIM2->ARR = 47; // (479 + 1) = 480
 
     TIM2->DIER |= TIM_DIER_UIE;
     NVIC_EnableIRQ(TIM2_IRQn);
