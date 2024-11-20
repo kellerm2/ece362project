@@ -28,6 +28,7 @@ const char* username = "vanderg0";
 void nano_wait(int);
 void draw_visualizer_bars();
 void init_tim2();
+void sdcard_io_high_speed(void);
 
 //=============================================================================
 // Part 1: 7-segment display update with DMA
@@ -55,14 +56,14 @@ void setup_dma(void) {
     DMA1_Channel5->CMAR = (uint32_t)adc_buffer;
     DMA1_Channel5->CPAR = (uint32_t)&(ADC1->DR);
     DMA1_Channel5->CNDTR = TFT_WIDTH;
-    DMA1_Channel5->CCR |= DMA_CCR_DIR;
+    DMA1_Channel5->CCR &= ~DMA_CCR_DIR;
     DMA1_Channel5->CCR |= DMA_CCR_MINC;
     DMA1_Channel5->CCR |= DMA_CCR_MSIZE_0;
     DMA1_Channel5->CCR |= DMA_CCR_PSIZE_0;
     DMA1_Channel5->CCR |= DMA_CCR_CIRC;
     DMA1_Channel5->CCR |= DMA_CCR_EN;
 
-    ADC1->CFGR1 |= ADC_CFGR1_DMAEN;
+    
 }
 
 //============================================================================
@@ -80,6 +81,7 @@ ADC1->CR |= ADC_CR_ADEN;
 while ((ADC1->ISR & ADC_ISR_ADRDY) == 0) {}
 ADC1->CHSELR |= ADC_CHSELR_CHSEL1;
 while ((ADC1->ISR & ADC_ISR_ADRDY) == 0) {}
+ADC1->CFGR1 |= ADC_CFGR1_DMAEN;
 }
 
 void scale_adc_values(void) {
@@ -157,7 +159,19 @@ void init_lcd_spi() {
     GPIOB->MODER |= (0b01 << (11 * 2));
     GPIOB->MODER |= (0b01 << (14 * 2));
     init_spi1_slow(); //Call init_spi1_slow() to configure SPI1.
+    sdcard_io_high_speed();
 }
+
+void sdcard_io_high_speed(){
+    SPI1 -> CR1 &= ~SPI_CR1_SPE;
+
+    SPI1 -> CR1 &= ~SPI_CR1_BR;
+    SPI1 -> CR1 |= SPI_CR1_BR_0;
+
+    SPI1 -> CR1 |= SPI_CR1_SPE;
+
+}
+
 
 // uint8_t spi_transfer(uint8_t data) {
 //     // Send data
@@ -177,6 +191,21 @@ void init_lcd_spi() {
 //     tft_reg_select(0);
 //     LCD_Init(tft_reset, tft_select, tft_reg_select);
 // }
+void setup_dma_interrupt(void) {
+    // Enable DMA interrupt for Channel 1 (ADC DMA)
+    DMA1_Channel5->CCR |= DMA_CCR_TCIE; // Enable transfer complete interrupt
+    NVIC_EnableIRQ(DMA1_Ch4_7_DMA2_Ch3_5_IRQn);  // Enable the interrupt in the NVIC
+}
+
+void DMA1_Ch4_7_DMA2_Ch3_5_IRQHandler();
+void DMA1_Ch4_7_DMA2_Ch3_5_IRQHandler(void) {
+    if (DMA1->ISR & DMA_ISR_TCIF5) {  // Check if transfer complete flag is set
+        DMA1->IFCR |= DMA_IFCR_CTCIF5; // Clear the transfer complete flag
+        
+        // Now that the data is in adc_buffer[], trigger the visualizer
+        draw_visualizer_bars();
+    }
+}
 
 void init_tim15(void) {
     RCC->APB2ENR |= RCC_APB2ENR_TIM15EN;
@@ -185,7 +214,8 @@ void init_tim15(void) {
     TIM15->ARR = 47; // (47 + 1) = 48
 
     TIM15->DIER |= TIM_DIER_UDE;
-    NVIC_EnableIRQ(TIM15_IRQn);
+    // NVIC_EnableIRQ(TIM15_IRQn);
+    NVIC_SetPriority(TIM15_IRQn, 0); 
     TIM15->CR1 |= TIM_CR1_CEN;
 }
 
@@ -194,7 +224,7 @@ void TIM15_IRQHandler();
 void TIM15_IRQHandler() {
     TIM15->SR &= ~TIM_SR_UIF;
 
-    LCD_DrawFillRectangle(0, 0, 100, 100, BLUE);
+    //LCD_DrawFillRectangle(0, 0, 100, 100, BLUE);
     draw_visualizer_bars();
 }
 
@@ -215,8 +245,9 @@ void draw_visualizer_bars() {
         // Draw a filled rectangle for the bar
         // if bar_height thresholds, then change the color that is called with fill Rect
         LCD_DrawFillRectangle(x, y, x+1, bar_height, GREEN);
-        nano_wait(10000000);
+        nano_wait(1000000);
     }
+    LCD_Clear(WHITE);
 }
 
 void TIM2_IRQHandler();
@@ -248,25 +279,30 @@ void init_tim2(void) {
 // All the things you need to test your subroutines.
 //============================================================================
 int main(void) {
+
     internal_clock();
-    setup_adc();
-    setup_dma();
-    init_tim15();
-    init_tim2();
+
     init_lcd_spi();
 
     LCD_Setup(); // should call init_lcd_spi() ??
-    //LCD_Clear(GREEN);
-    LCD_DrawFillRectangle(0, 0, 200, 300, BLUE);
-    int div = 1;
+    // LCD_Clear(GREEN);
+
+    setup_adc();
+    setup_dma();
+    setup_dma_interrupt();
+    init_tim15();
+    init_tim2();
+    
+    //LCD_DrawFillRectangle(0, 0, 200, 300, BLUE);
+    //int div = 1;
     while (1)
     {
         //for (int i = 0; i <TFT_WIDTH; i++) {
         //    adc_buffer[i] = adc_buffer[i] / div;
         //}
-        draw_visualizer_bars(); // does this need to be interrupt ????
-        LCD_Clear(MAGENTA);//     nano_wait(1000000000);
-        div *= 2;
+        //draw_visualizer_bars(); // does this need to be interrupt ????
+        //LCD_Clear(MAGENTA);//     nano_wait(1000000000);
+        //div *= 2;
     }
 
     return 0;
