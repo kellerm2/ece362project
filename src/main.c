@@ -210,7 +210,7 @@ void DMA1_Ch4_7_DMA2_Ch3_5_IRQHandler(void) {
 void init_tim15(void) {
     RCC->APB2ENR |= RCC_APB2ENR_TIM15EN;
     // 48M / 1k = 48k = PSC * ARR
-    TIM15->PSC = 999; // (999 + 1) = 1k
+    TIM15->PSC = 9999; // (999 + 1) = 1k
     TIM15->ARR = 47; // (47 + 1) = 48
 
     TIM15->DIER |= TIM_DIER_UDE;
@@ -244,7 +244,13 @@ void draw_visualizer_bars() {
 
         // Draw a filled rectangle for the bar
         // if bar_height thresholds, then change the color that is called with fill Rect
-        LCD_DrawFillRectangle(x, y, x+1, bar_height, GREEN);
+        char str[200];
+        snprintf(str, sizeof(str), "BH: %d\n", bar_height);
+        LCD_DrawString(10, 10, BLACK, WHITE, str, 16, 0);
+        if (bar_height < 0.1 * TFT_HEIGHT) LCD_DrawFillRectangle(x, y, x+1, bar_height, BLUE);
+        else if (bar_height < 0.2 * TFT_HEIGHT) LCD_DrawFillRectangle(x, y, x+1, bar_height, GREEN);
+        else if (bar_height < 0.3 * TFT_HEIGHT) LCD_DrawFillRectangle(x, y, x+1, bar_height, YELLOW);
+        else LCD_DrawFillRectangle(x, y, x+1, bar_height, RED);
         nano_wait(1000000);
     }
     LCD_Clear(WHITE);
@@ -264,7 +270,7 @@ void TIM2_IRQHandler() {
 void init_tim2(void) {
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
     // 48M / 10 = 4.8M = PSC * ARR
-    TIM2->PSC = 999; // (9999 + 1) = 10k
+    TIM2->PSC = 99; // (9999 + 1) = 10k
     TIM2->ARR = 47; // (479 + 1) = 480
 
     TIM2->DIER |= TIM_DIER_UIE;
